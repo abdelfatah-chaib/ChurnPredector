@@ -5,7 +5,7 @@ import base64
 # ========== CONFIG ==========
 st.set_page_config(page_title="Churn Predictor", layout="wide")
 
-# ========== BACKGROUND ==========
+# ========== BACKGROUND PICTURE ==========
 def add_bg_from_local(image_path):
     with open(image_path, "rb") as image_file:
         encoded_string = base64.b64encode(image_file.read()).decode()
