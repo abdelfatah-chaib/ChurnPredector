@@ -5,7 +5,7 @@ import base64
 # ========== CONFIG ==========
 st.set_page_config(page_title="Churn Predictor", layout="wide")
 
-# ========== BACKGROUND PICTURE ==========
+# ========== BACKGROUND ==========
 def add_bg_from_local(image_path):
     with open(image_path, "rb") as image_file:
         encoded_string = base64.b64encode(image_file.read()).decode()
@@ -24,7 +24,7 @@ def add_bg_from_local(image_path):
         unsafe_allow_html=True
     )
 
-add_bg_from_local("images\world.jpg")
+add_bg_from_local("images/world6.jpg")
 
 # ========== CSS (NAVBAR + PANEL) ==========
 st.markdown("""
@@ -72,7 +72,7 @@ st.markdown("""
     .main-title {
       font-family: 'Playball', cursive;
       font-size: 80px; color: #05c8f7;
-      text-align: center; margin-top: 10px;
+      text-align: center; margin-top: 0px;
     }
     .subtitle {
       font-family: 'Poppins', sans-serif; font-weight: 600;
@@ -83,7 +83,7 @@ st.markdown("""
 
     /* --------- PANEL LOGIN / SIGNUP --------- */
     .panel {
-      width: 450px; height: 550px;
+      width: 450px; height: 630px;
       margin: 50px auto;
       background: rgba(62,218,216,0.3);
       backdrop-filter: blur(5px);
@@ -181,7 +181,7 @@ if page == "home":
     """, unsafe_allow_html=True)
 
 elif page == "service":
-    st.subheader("🛠 Nos Services")
+    st.subheader("🛠️ Nos Services")
     st.write("Analyse prédictive, segmentation client, tableaux de bord dynamiques...")
 
 elif page == "pricing":
@@ -215,7 +215,7 @@ elif page == "signup":
     # -------- SIGNUP PANEL --------
     st.markdown("""
     <div class="panel">
-      <h1>Churn Predictor</h1>
+      <h1><span style="color:#3DA6DF;">Churn</span> <span style="color:#43D9D7;">Predictor</span></h1>
       <label for="user">Username</label>
       <input type="text" id="user" placeholder="Your username">
 
