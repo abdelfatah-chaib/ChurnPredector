@@ -1,6 +1,7 @@
 import streamlit as st
 from PIL import Image
 import base64
+from db import authenticate, create_user, get_user
 
 # ========== CONFIG ==========
 st.set_page_config(
@@ -9,7 +10,8 @@ st.set_page_config(
     layout="wide"
 )
 
-
+if "logged_in" not in st.session_state:
+    st.session_state["logged_in"] = False
 # ========== BACKGROUND ==========
 def add_bg_from_local(image_path):
     with open(image_path, "rb") as image_file:
@@ -157,7 +159,6 @@ st.markdown("""
     <div class="nav-left">
         <form method="get"><button name="page" value="home"    class="nav-button">Accueil</button></form>
         <form method="get"><button name="page" value="service" class="nav-button">Service</button></form>
-        <form method="get"><button name="page" value="pricing" class="nav-button">Pricing</button></form>
         <form method="get"><button name="page" value="contact" class="nav-button">Contact</button></form>
     </div>
     <div class="nav-right">
@@ -373,51 +374,43 @@ elif page == "service":
         """, unsafe_allow_html=True)
 
 
-elif page == "pricing":
-    st.subheader("💸 Tarification")
-    st.write("Choisissez le plan qui correspond à vos besoins.")
-
 elif page == "contact":
     st.subheader("📞 Contactez-nous")
     st.write("Remplissez notre formulaire ou envoyez-nous un mail.")
 
 elif page == "login":
-    # -------- LOGIN PANEL --------
-    st.markdown("""
-    <div class="panel">
-      <h1><span style="color:#3DA6DF;">Churn</span> <span style="color:#43D9D7;">Predictor</span></h1>
-      <label for="email">Email</label>
-      <input type="email" id="email" placeholder="username@email.com">
+    st.markdown('<div class="panel"><h1><span style="color:#3DA6DF;">Churn</span> <span style="color:#43D9D7;">Predictor</span></h1>', unsafe_allow_html=True)
+    
+    email = st.text_input("Email", placeholder="username@email.com")
+    password = st.text_input("Mot de passe", type="password", placeholder="Votre mot de passe")
 
-      <label for="pwd">Password</label>
-      <div class="password-wrapper">
-        <input type="password" id="pwd" placeholder="Enter Your Password">
-        <img src="https://img.icons8.com/ios-filled/50/ffffff/visible.png"
-             onclick="togglePwd(this)" alt="toggle">
-      </div>
+    if st.button("Sign In"):
+        if authenticate(email, password):
+            user = get_user(email)
+            st.success(f"Bienvenue {user[1]} {user[2]} 🎉")
+            st.session_state['logged_in'] = True
+            st.session_state['user'] = user
+            st.switch_page("pages/dashboard.py") 
+        else:
+            st.error("❌ Email ou mot de passe incorrect.")
 
-      <button class="btn-main">Sign In</button>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
 
+# ============ SIGNUP ============
 elif page == "signup":
-    # -------- SIGNUP PANEL --------
-    st.markdown("""
-    <div class="panel">
-      <h1><span style="color:#3DA6DF;">Churn</span> <span style="color:#43D9D7;">Predictor</span></h1>
-      <label for="user">Username</label>
-      <input type="text" id="user" placeholder="Your username">
+    st.markdown('<div class="panel"><h1><span style="color:#3DA6DF;">Créer un compte</span></h1>', unsafe_allow_html=True)
 
-      <label for="email2">Email</label>
-      <input type="email" id="email2" placeholder="username@email.com">
+    prenom = st.text_input("Prénom")
+    nom    = st.text_input("Nom")
+    email  = st.text_input("Email")
+    pwd    = st.text_input("Mot de passe", type="password")
 
-      <label for="pwd2">Password</label>
-      <div class="password-wrapper">
-        <input type="password" id="pwd2" placeholder="Create a Password">
-        <img src="https://img.icons8.com/ios-filled/50/ffffff/visible.png"
-             onclick="togglePwd(this)" alt="toggle">
-      </div>
-
-      <button class="btn-main">Sign Up</button>
-    </div>
-    """, unsafe_allow_html=True)
+    if st.button("Sign Up"):
+        if prenom and nom and email and pwd:
+            create_user(prenom, nom, email, pwd)
+            st.success("✅ Compte créé avec succès. Vous pouvez maintenant vous connecter.")
+            st.switch_page("pages/home.py")
+        else:
+            st.warning("⚠️ Veuillez remplir tous les champs.")
+    
+    st.markdown('</div>', unsafe_allow_html=True)
