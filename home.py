@@ -247,86 +247,84 @@ if page == "home":
     </script>
     """, unsafe_allow_html=True)
 
+
 elif page == "service":
+    # -------- CSS pour les cartes de service --------
     st.markdown("""
     <style>
     .service-card {
-        background: rgba(62, 218, 216, 0.3) !important;
-        backdrop-filter: blur(5px);
-        border-radius: 15px;
-        padding: 30px;
+        background: rgba(62, 218, 216, 0.25) !important;
+        backdrop-filter: blur(4px);
+        border-radius: 16px;
+        padding: 28px;
         margin: 20px 0;
-        transition: all 0.3s ease;
-        border: 2px solid rgba(255, 255, 255, 0.1);
-        color: white;
+        transition: transform .3s ease, box-shadow .3s ease;
+        border: 1px solid rgba(255, 255, 255, 0.15);
     }
     .service-card:hover {
-        transform: translateY(-5px);
-        background: rgba(62, 218, 216, 0.4) !important;
-        box-shadow: 0 8px 32px rgba(62, 218, 216, 0.2);
+        transform: translateY(-6px);
+        box-shadow: 0 12px 32px rgba(62, 218, 216, 0.3);
     }
     .service-icon {
-        font-size: 40px;
-        margin-bottom: 15px;
-        color: #FFFFFF;
+        font-size: 42px;
+        margin-bottom: 12px;
+        color: #3DA6DF;
     }
     .service-title {
-        color: #FFFFFF !important;
-        font-size: 24px;
-        margin-bottom: 15px;
+        font-size: 22px;
         font-weight: 600;
-        text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin-bottom: 10px;
+        color: #111;
     }
     .service-desc {
-        color: rgba(255, 255, 255, 0.9) !important;
-        line-height: 1.8;
+        font-size: 15px;
+        line-height: 1.7;
+        color: #333;
     }
     .tech-badge {
         display: inline-block;
-        background: rgba(255, 255, 255, 0.2);
-        color: white;
-        padding: 5px 15px;
-        border-radius: 20px;
-        margin: 5px;
-        font-size: 12px;
-        backdrop-filter: blur(2px);
-        border: 1px solid rgba(255, 255, 255, 0.15);
-    }
-    ul {
-        color: rgba(255, 255, 255, 0.9) !important;
+        background: rgba(255,255,255,0.3);
+        padding: 4px 12px;
+        border-radius: 12px;
+        margin: 4px 4px 0 0;
+        font-size: 11px;
     }
     </style>
-""", unsafe_allow_html=True)
-    
-    st.markdown('<h1 style="text-align:center; color:#3DA6DF;">📊 Nos Solutions Avancées</h1>', unsafe_allow_html=True)
-    
+    """, unsafe_allow_html=True)
+
+    st.markdown('<h1 style="text-align:center; color:#3EDAD8; margin-bottom:30px;">🗺️ Nos Solutions Waze Churn</h1>', unsafe_allow_html=True)
+
     col1, col2 = st.columns(2)
-    
     with col1:
         st.markdown("""
         <div class="service-card">
-            <div class="service-icon">🤖</div>
-            <div class="service-title">Prédiction du Churn</div>
+            <div class="service-icon">🚗</div>
+            <div class="service-title">Analyse de Comportement de Conduite</div>
             <div class="service-desc">
-                Notre modèle d'IA entraîné sur des millions de données prédit les risques de désabonnement avec une précision de 92%.
-                <div style="margin-top:15px;">
-                    <span class="tech-badge">Machine Learning</span>
-                    <span class="tech-badge">XGBoost</span>
-                    <span class="tech-badge">Analyse Temps Réel</span>
+                Notre pipeline traite les données GPS et historiques de trajets pour identifier les 
+                signes précurseurs d’abandon de l’application : irrégularités de déplacement, 
+                augmentation des temps de trajet, densité de trafic.
+                <div style="margin-top:12px;">
+                    <span class="tech-badge">Time Series</span>
+                    <span class="tech-badge">Clustering</span>
+                    <span class="tech-badge">Feature Engineering</span>
                 </div>
             </div>
         </div>
-        
+        """ , unsafe_allow_html=True)
+
+        st.markdown("""
         <div class="service-card">
-            <div class="service-icon">📈</div>
-            <div class="service-title">Analytique Avancée</div>
+            <div class="service-icon">🔍</div>
+            <div class="service-title">Modèle de Prédiction du Churn</div>
             <div class="service-desc">
-                Tableaux de bord interactifs avec segmentation client et analyse comportementale.
-                <ul style="margin-top:10px; color:#666;">
-                    <li>Segmentation RFM</li>
-                    <li>Analyse de cohortes</li>
-                    <li>Visualisation des tendances</li>
-                </ul>
+                Un modèle XGBoost optimisé (87% de précision sur un jeu de test indépendant) 
+                prédit le risque d’abandon des utilisateurs sur la base de plus de 50 variables.
+                <div style="margin-top:12px;">
+                    <span class="tech-badge">XGBoost</span>
+                    <span class="tech-badge">ROC-AUC 0.91</span>
+                    <span class="tech-badge">Validation Croisée</span>
+                </div>
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -334,35 +332,38 @@ elif page == "service":
     with col2:
         st.markdown("""
         <div class="service-card">
-            <div class="service-icon">🎯</div>
-            <div class="service-title">Actions Ciblées</div>
+            <div class="service-icon">💬</div>
+            <div class="service-title">Chatbot d’Assistance</div>
             <div class="service-desc">
-                Recommandations personnalisées pour chaque segment client :
-                <div style="margin-top:10px;">
-                    <div style="display: flex; justify-content: space-between; margin:5px 0;">
-                        <span>🔴 Clients à risque</span>
-                        <span>Campagnes de rétention</span>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; margin:5px 0;">
-                        <span>🟢 Clients fidèles</span>
-                        <span>Programmes de fidélisation</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <div class="service-card">
-            <div class="service-icon">🛡️</div>
-            <div class="service-title">Sécurité des Données</div>
-            <div class="service-desc">
-                Protection GDPR avec cryptage AES-256 et audits de sécurité trimestriels.
-                <div style="margin-top:15px; color:#3DA6DF;">
-                    <span>✓ Certifié ISO 27001</span><br>
-                    <span>✓ Hébergement EU</span>
+                Un agent conversationnel intégré pour répondre en temps réel aux questions
+                des conducteurs : itinéraires alternatifs, explications de calcul d’itinéraire, 
+                suggestions de points d’intérêt.
+                <div style="margin-top:12px;">
+                    <span class="tech-badge">NLU & NLG</span>
+                    <span class="tech-badge">Flask API</span>
+                    <span class="tech-badge">WebSocket Live Chat</span>
                 </div>
             </div>
         </div>
         """, unsafe_allow_html=True)
+
+        st.markdown("""
+        <div class="service-card">
+            <div class="service-icon">📊</div>
+            <div class="service-title">Tableaux de Bord Dynamiques</div>
+            <div class="service-desc">
+                Des dashboards interactifs (Streamlit & Plotly) pour suivre en temps réel 
+                la santé de votre base d’utilisateurs, les métriques de rétention et 
+                les segments à risque.
+                <ul style="margin-top:8px; color:#444;">
+                    <li>Analyse par région</li>
+                    <li>Comparatif avant/après campagnes</li>
+                    <li>Alertes personnalisées</li>
+                </ul>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
 
 elif page == "pricing":
     st.subheader("💸 Tarification")
