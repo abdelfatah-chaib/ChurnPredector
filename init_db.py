@@ -1,9 +1,9 @@
 import sqlite3
 
 conn = sqlite3.connect('users.db')
-cursor = conn.cursor()
+cur  = conn.cursor()
 
-cursor.execute('''
+cur.execute('''
 CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     first_name TEXT NOT NULL,
@@ -15,4 +15,5 @@ CREATE TABLE IF NOT EXISTS users (
 
 conn.commit()
 conn.close()
-print("Base users.db initialisée avec succès.")
+print("✅ Base users.db recréée sans hash.")
+# This script initializes the database for user management.
