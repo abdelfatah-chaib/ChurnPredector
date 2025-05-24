@@ -81,7 +81,7 @@ st.markdown("""
     }
     .subtitle {
       font-family: 'Poppins', sans-serif; font-weight: 600;
-      font-size:20px; color: #333;
+      font-size:20px; color: #404040;
        margin: 0px auto;text-align: center;
       width: 50%; line-height: 1.6;
     }
@@ -292,13 +292,24 @@ elif page == "service":
     </style>
     """, unsafe_allow_html=True)
 
-    st.markdown('<h1 style="text-align:center; color:#3EDAD8; margin-bottom:30px;">🗺️ Nos Solutions Waze Churn</h1>', unsafe_allow_html=True)
-
+    st.markdown(
+        '''
+        <h1 style="
+            text-align: center; 
+            color: #3EDAD8; 
+            margin-bottom: 30px;
+            font-family: 'Playball', cursive;
+            font-size: 48px;
+        ">
+            Nos Solutions Waze Churn
+        </h1>
+        ''', 
+        unsafe_allow_html=True
+    )
     col1, col2 = st.columns(2)
     with col1:
         st.markdown("""
         <div class="service-card">
-            <div class="service-icon">🚗</div>
             <div class="service-title">Analyse de Comportement de Conduite</div>
             <div class="service-desc">
                 Notre pipeline traite les données GPS et historiques de trajets pour identifier les 
@@ -315,10 +326,9 @@ elif page == "service":
 
         st.markdown("""
         <div class="service-card">
-            <div class="service-icon">🔍</div>
             <div class="service-title">Modèle de Prédiction du Churn</div>
             <div class="service-desc">
-                Un modèle XGBoost optimisé (87% de précision sur un jeu de test indépendant) 
+                Un modèle XGBoost optimisé (68% de précision sur un jeu de test indépendant) 
                 prédit le risque d’abandon des utilisateurs sur la base de plus de 50 variables.
                 <div style="margin-top:12px;">
                     <span class="tech-badge">XGBoost</span>
@@ -332,7 +342,6 @@ elif page == "service":
     with col2:
         st.markdown("""
         <div class="service-card">
-            <div class="service-icon">💬</div>
             <div class="service-title">Chatbot d’Assistance</div>
             <div class="service-desc">
                 Un agent conversationnel intégré pour répondre en temps réel aux questions
@@ -349,7 +358,6 @@ elif page == "service":
 
         st.markdown("""
         <div class="service-card">
-            <div class="service-icon">📊</div>
             <div class="service-title">Tableaux de Bord Dynamiques</div>
             <div class="service-desc">
                 Des dashboards interactifs (Streamlit & Plotly) pour suivre en temps réel 
