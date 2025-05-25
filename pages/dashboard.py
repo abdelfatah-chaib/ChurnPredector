@@ -3,7 +3,7 @@ import sys
 import os
 import base64
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from nav_bar import nav_bar
+from pages.nav_bar import nav_bar
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
@@ -11,7 +11,7 @@ import plotly.graph_objects as go
 # Configuration de la page
 st.set_page_config(
     page_title="Dashboard - Churn Predictor",
-    page_icon="wazeLogo.png",
+    page_icon="images/wazeLogo.png",
     layout="wide"
 )
 

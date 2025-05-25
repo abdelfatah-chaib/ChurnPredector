@@ -6,7 +6,7 @@ from db import authenticate, create_user, get_user
 # ========== CONFIG ==========
 st.set_page_config(
     page_title="Churn Predictor",
-    page_icon="wazeLogo.png",  # Chemin vers ton logo
+    page_icon="images/wazeLogo.png",
     layout="wide"
 )
 
