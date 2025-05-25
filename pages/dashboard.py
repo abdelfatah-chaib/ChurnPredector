@@ -8,16 +8,30 @@ import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
 
+from pages.nav_bar import nav_bar, render_home_page, render_notification_page, render_profile_page
+
 # Configuration de la page
 st.set_page_config(
-    page_title="Dashboard - Churn Predictor",
+    page_title="Churn Predictor - Accueil",
     page_icon="images/wazeLogo.png",
     layout="wide"
 )
 
-# Afficher la barre de navigation
-nav_bar()
+# Initialiser la session si nécessaire
+if 'logged_in' not in st.session_state:
+    st.session_state.logged_in = True  # ou False selon votre logique de connexion
+if 'user_name' not in st.session_state:
+    st.session_state.user_name = "Utilisateur"
+if 'user_email' not in st.session_state:
+    st.session_state.user_email = "demo@example.com"
 
+# Vérifier si l'utilisateur est connecté
+if not st.session_state.get('logged_in', False):
+    st.error("Vous devez être connecté pour accéder à cette page.")
+    # Ici vous pourriez rediriger vers une page de login
+    st.stop()
+
+nav_bar()
 # Vérifier quelle page afficher
 pages = st.query_params.get_all("page")
 current_page = pages[0] if pages else "home"

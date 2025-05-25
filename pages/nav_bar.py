@@ -1,18 +1,27 @@
 import streamlit as st
-from PIL import Image
-import base64
-from database.db import authenticate, create_user, get_user
-import sys
-import os
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+import sqlite3
+
+DB_PATH = 'database/users.db'
+
+def get_conn():
+    return sqlite3.connect(DB_PATH, check_same_thread=False)
+
+def get_user_by_email(email):
+    try:
+        conn = get_conn()
+        cur = conn.cursor()
+        cur.execute('SELECT id, first_name, last_name, email FROM users WHERE email = ?', (email,))
+        user = cur.fetchone()
+        conn.close()
+        return user
+    except:
+        return None
 
 def nav_bar():
     """
     Barre de navigation avec gestion des pages et utilisateur dynamique
     """
     user = st.session_state.get('user_name', 'Utilisateur')
-    user_name = get_user(st.session_state.get('user_id')) if 'user_id' in st.session_state else None
-    
     # Récupération de la page courante
     pages = st.query_params.get_all("page")
     current_page = pages[0] if pages else "home"
@@ -20,6 +29,11 @@ def nav_bar():
     # Fonction pour déterminer la classe CSS active
     def get_active_class(page_name):
         return "nav-button active" if current_page == page_name else "nav-button"
+    
+    # Gestion des clics sur les icônes
+    if st.session_state.get('show_notification', False):
+        st.success("🎉 Bienvenue sur notre plateforme ! Nous sommes ravis de vous accueillir.")
+        st.session_state.show_notification = False
     
     st.markdown(f'''
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
@@ -101,6 +115,7 @@ def nav_bar():
             border: 1px solid rgba(0,0,0,0.1);
             cursor: pointer;
             transition: all 0.3s;
+            font-family: 'Poppins', sans-serif;
         }}
         .user-section:hover {{
             background: rgba(62, 218, 216, 0.2);
@@ -126,18 +141,220 @@ def nav_bar():
             </form>
           </div>
           <div class="nav-right">
-            <button class="btn-icon" title="Messages">
-                <i class="bi bi-chat-dots"></i>
-            </button>
-            <button class="btn-icon" title="Notifications">
-                <i class="bi bi-bell"></i>
-                <span class="badge">1</span>
-            </button>
-            <div class="user-section" title="Profil utilisateur">
-              <span style="font-weight:600;">{user_name}</span>
-              <i class="bi bi-person-circle" style="font-size: 20px; color: #3DA6DF;"></i>
-            </div>
+            <form method="get" style="display: inline;">
+                <button name="page" value="notification" class="btn-icon" title="Notifications" type="submit">
+                    <i class="bi bi-bell"></i>
+                    <span class="badge">1</span>
+                </button>
+            </form>
+            <form method="get" style="display: inline;">
+                <button name="page" value="profile" class="user-section" title="Profil utilisateur" type="submit" style="border: none; background: transparent;">
+                  <span style="font-weight:600;">{user}</span>
+                  <i class="bi bi-person-circle" style="font-size: 20px; color: #3DA6DF;"></i>
+                </button>
+            </form>
           </div>
+        </div>
+        ''', unsafe_allow_html=True)
+
+def render_notification_page():
+    """
+    Affiche la page de notifications
+    """
+    st.markdown(f'''
+        <div style="
+            text-align: center;
+            padding: 40px 20px;
+            background: linear-gradient(135deg, rgba(230, 57, 70, 0.1) 0%, rgba(255, 193, 7, 0.1) 100%);
+            border-radius: 20px;
+            margin: 40px 0;
+            border: 1px solid rgba(255,255,255,0.2);
+            backdrop-filter: blur(5px);
+        ">
+            <h1 style="
+                font-family: 'Poppins', sans-serif;
+                font-size: 36px;
+                color: #E63946;
+                margin-bottom: 20px;
+                text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+            ">
+                🔔 Notifications
+            </h1>
+            <div style="
+                background: rgba(255,255,255,0.9);
+                padding: 25px;
+                border-radius: 15px;
+                margin: 20px auto;
+                max-width: 600px;
+                text-align: left;
+                box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            ">
+                <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 15px;">
+                    <div style="
+                        background: #E63946;
+                        color: white;
+                        border-radius: 50%;
+                        width: 40px;
+                        height: 40px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        font-size: 18px;
+                    ">🎉</div>
+                    <div>
+                        <h3 style="margin: 0; color: #2c3e50; font-size: 18px;">Bienvenue sur notre plateforme !</h3>
+                        <p style="margin: 5px 0 0 0; color: #666; font-size: 14px;">Il y a 2 minutes</p>
+                    </div>
+                </div>
+                <p style="color: #555; line-height: 1.6; margin: 0;">
+                    Nous sommes ravis de vous accueillir sur notre plateforme d'analyse prédictive. 
+                    Explorez nos fonctionnalités pour optimiser la rétention de vos clients !
+                </p>
+            </div>
+            <div style="
+                background: rgba(255,255,255,0.7);
+                padding: 20px;
+                border-radius: 15px;
+                margin: 20px auto;
+                max-width: 600px;
+                text-align: left;
+                border: 2px dashed #ddd;
+            ">
+                <p style="color: #999; text-align: center; margin: 0; font-style: italic;">
+                    Aucune autre notification pour le moment
+                </p>
+            </div>
+        </div>
+        ''', unsafe_allow_html=True)
+
+def render_profile_page():
+    """
+    Affiche la page de profil utilisateur avec données de la base
+    """
+    user_email = st.session_state.get('user_email', '')
+    user_data = get_user_by_email(user_email) if user_email else None
+    
+    if user_data:
+        user_id, first_name, last_name, email = user_data
+        full_name = f"{first_name} {last_name}"
+    else:
+        # Données par défaut si pas de connexion DB
+        user_id = "N/A"
+        first_name = st.session_state.get('user_name', 'Utilisateur')
+        last_name = "Demo"
+        email = st.session_state.get('user_email', 'demo@example.com')
+        full_name = f"{first_name} {last_name}"
+    
+    st.markdown(f'''
+        <div style="
+            padding: 40px 20px;
+            background: linear-gradient(135deg, rgba(61, 166, 223, 0.1) 0%, rgba(67, 217, 215, 0.1) 100%);
+            border-radius: 20px;
+            margin: 40px 0;
+            border: 1px solid rgba(255,255,255,0.2);
+            backdrop-filter: blur(5px);
+        ">
+            <div style="text-align: center; margin-bottom: 40px;">
+                <div style="
+                    width: 120px;
+                    height: 120px;
+                    background: linear-gradient(135deg, #3DA6DF, #43D9D7);
+                    border-radius: 50%;
+                    margin: 0 auto 20px auto;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 48px;
+                    color: white;
+                    box-shadow: 0 8px 25px rgba(61, 166, 223, 0.3);
+                ">
+                    <i class="bi bi-person-circle"></i>
+                </div>
+                <h1 style="
+                    font-family: 'Poppins', sans-serif;
+                    font-size: 36px;
+                    color: #3DA6DF;
+                    margin: 0 0 10px 0;
+                    text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+                ">
+                    {full_name}
+                </h1>
+                <p style="color: #666; font-size: 18px; margin: 0;">Profil Utilisateur</p>
+            </div>
+            
+            <div style="
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+                gap: 25px;
+                max-width: 800px;
+                margin: 0 auto;
+            ">
+                <div style="
+                    background: rgba(255,255,255,0.9);
+                    padding: 25px;
+                    border-radius: 15px;
+                    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+                ">
+                    <h3 style="color: #2c3e50; margin: 0 0 20px 0; font-size: 20px; display: flex; align-items: center; gap: 10px;">
+                        <i class="bi bi-person-badge" style="color: #3DA6DF;"></i>
+                        Informations Personnelles
+                    </h3>
+                    <div style="space-y: 15px;">
+                        <div style="margin-bottom: 15px;">
+                            <label style="color: #666; font-size: 14px; font-weight: 600; display: block; margin-bottom: 5px;">ID Utilisateur</label>
+                            <p style="color: #333; font-size: 16px; margin: 0; padding: 10px; background: #f8f9fa; border-radius: 8px;">{user_id}</p>
+                        </div>
+                        <div style="margin-bottom: 15px;">
+                            <label style="color: #666; font-size: 14px; font-weight: 600; display: block; margin-bottom: 5px;">Prénom</label>
+                            <p style="color: #333; font-size: 16px; margin: 0; padding: 10px; background: #f8f9fa; border-radius: 8px;">{first_name}</p>
+                        </div>
+                        <div style="margin-bottom: 15px;">
+                            <label style="color: #666; font-size: 14px; font-weight: 600; display: block; margin-bottom: 5px;">Nom</label>
+                            <p style="color: #333; font-size: 16px; margin: 0; padding: 10px; background: #f8f9fa; border-radius: 8px;">{last_name}</p>
+                        </div>
+                        <div>
+                            <label style="color: #666; font-size: 14px; font-weight: 600; display: block; margin-bottom: 5px;">Email</label>
+                            <p style="color: #333; font-size: 16px; margin: 0; padding: 10px; background: #f8f9fa; border-radius: 8px;">{email}</p>
+                        </div>
+                    </div>
+                </div>
+                <div style="
+                    background: rgba(255,255,255,0.9);
+                    padding: 25px;
+                    border-radius: 15px;
+                    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+                ">
+                    <h3 style="color: #2c3e50; margin: 0 0 20px 0; font-size: 20px; display: flex; align-items: center; gap: 10px;">
+                        <i class="bi bi-graph-up" style="color: #43D9D7;"></i>
+                        Statistiques d'Utilisation
+                    </h3>
+                    <div style="space-y: 15px;">
+                        <div style="margin-bottom: 15px;">
+                            <label style="color: #666; font-size: 14px; font-weight: 600; display: block; margin-bottom: 5px;">Prédictions Effectuées</label>
+                            <p style="color: #333; font-size: 16px; margin: 0; padding: 10px; background: #e8f5e8; border-radius: 8px; font-weight: 600;">127</p>
+                        </div>
+                        <div style="margin-bottom: 15px;">
+                            <label style="color: #666; font-size: 14px; font-weight: 600; display: block; margin-bottom: 5px;">Dernière Connexion</label>
+                            <p style="color: #333; font-size: 16px; margin: 0; padding: 10px; background: #e3f2fd; border-radius: 8px;">Aujourd'hui</p>
+                        </div>
+                        <div style="margin-bottom: 15px;">
+                            <label style="color: #666; font-size: 14px; font-weight: 600; display: block; margin-bottom: 5px;">Statut du Compte</label>
+                            <p style="color: #333; font-size: 16px; margin: 0; padding: 10px; background: #fff3cd; border-radius: 8px; font-weight: 600;">
+                                <span style="color: #28a745;">●</span> Actif
+                            </p>
+                        </div>
+                        <div>
+                            <label style="color: #666; font-size: 14px; font-weight: 600; display: block; margin-bottom: 5px;">Type de Compte</label>
+                            <p style="color: #333; font-size: 16px; margin: 0; padding: 10px; background: #f3e5f5; border-radius: 8px; font-weight: 600;">Premium</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div style="text-align: center; margin-top: 40px;">
+                <p style="color: #666; font-style: italic; font-size: 16px;">
+                    Membre depuis janvier 2025
+                </p>
+            </div>
         </div>
         ''', unsafe_allow_html=True)
 
@@ -146,7 +363,6 @@ def render_home_page():
     Affiche le contenu de la page d'accueil avec message de bienvenue
     """
     user_name = st.session_state.get("user_name", "cher utilisateur")
-    add_bg_from_local("images/background_img.jpg")
         
     st.markdown(f'''
         <div style="
@@ -165,7 +381,7 @@ def render_home_page():
                 margin-bottom: 20px;
                 text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
             ">
-                Bienvenue {user_name} !
+                Bienvenue chèr utilisateur !
             </h1>
             <p style="
                 font-size: 20px;
@@ -241,27 +457,3 @@ def render_home_page():
             </div>
         </div>
         ''', unsafe_allow_html=True)
-    
-def add_bg_from_local(image_path):
-    try:
-        with open(image_path, "rb") as image_file:
-            encoded_string = base64.b64encode(image_file.read()).decode()
-        st.markdown(
-            f"""
-            <style>
-            .stApp {{
-                background-image: url("data:image/png;base64,{encoded_string}");
-                background-size: cover;
-                background-position: center;
-            }}
-            /* réduction padding top */
-            .block-container {{ margin-top: -45px; }}
-            </style>
-            """,
-            unsafe_allow_html=True
-        )
-    except FileNotFoundError:
-        # Si l'image n'existe pas, continuer sans background
-        pass
-
-# apply background

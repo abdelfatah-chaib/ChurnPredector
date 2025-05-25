@@ -5,21 +5,22 @@ from database.db import authenticate, create_user, get_user
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-from pages.nav_bar import nav_bar, render_home_page
+from pages.nav_bar import nav_bar, render_home_page, render_notification_page, render_profile_page
 
-# ========== CONFIG ==========
+# Configuration de la page
 st.set_page_config(
-    page_title="Churn Predictor",
+    page_title="Churn Predictor - Accueil",
     page_icon="images/wazeLogo.png",
     layout="wide"
 )
-
 
 # Initialiser la session si nécessaire
 if 'logged_in' not in st.session_state:
     st.session_state.logged_in = True  # ou False selon votre logique de connexion
 if 'user_name' not in st.session_state:
     st.session_state.user_name = "Utilisateur"
+if 'user_email' not in st.session_state:
+    st.session_state.user_email = "demo@example.com"
 
 # Vérifier si l'utilisateur est connecté
 if not st.session_state.get('logged_in', False):
