@@ -2,6 +2,10 @@ import streamlit as st
 from PIL import Image
 import base64
 from database.db import authenticate, create_user, get_user
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+from pages.nav_bar import nav_bar, render_home_page
 
 # ========== CONFIG ==========
 st.set_page_config(
@@ -9,6 +13,21 @@ st.set_page_config(
     page_icon="images/wazeLogo.png",
     layout="wide"
 )
+
+
+# Initialiser la session si nécessaire
+if 'logged_in' not in st.session_state:
+    st.session_state.logged_in = True  # ou False selon votre logique de connexion
+if 'user_name' not in st.session_state:
+    st.session_state.user_name = "Utilisateur"
+
+# Vérifier si l'utilisateur est connecté
+if not st.session_state.get('logged_in', False):
+    st.error("Vous devez être connecté pour accéder à cette page.")
+    # Ici vous pourriez rediriger vers une page de login
+    st.stop()
+
+
 
 if "logged_in" not in st.session_state:
     st.session_state["logged_in"] = False
