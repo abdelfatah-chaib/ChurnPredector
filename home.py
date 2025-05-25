@@ -1,7 +1,7 @@
 import streamlit as st
 from PIL import Image
 import base64
-from db import authenticate, create_user, get_user
+from database.db import authenticate, create_user, get_user
 
 # ========== CONFIG ==========
 st.set_page_config(
