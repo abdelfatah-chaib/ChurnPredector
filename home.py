@@ -16,11 +16,8 @@ st.set_page_config(
 
 # Initialiser la session si nécessaire
 if 'logged_in' not in st.session_state:
-    st.session_state.logged_in = True  # ou False selon votre logique de connexion
-if 'user_name' not in st.session_state:
-    st.session_state.user_name = "Utilisateur"
-if 'user_email' not in st.session_state:
-    st.session_state.user_email = "demo@example.com"
+    st.session_state.logged_in = True  
+
 
 # Vérifier si l'utilisateur est connecté
 if not st.session_state.get('logged_in', False):
@@ -407,10 +404,15 @@ elif page == "login":
     if st.button("Sign In"):
         if authenticate(email, password):
             user = get_user(email)
-            st.success(f"Bienvenue {user[1]} {user[2]} 🎉")
-            st.session_state['logged_in'] = True
-            st.session_state['user'] = user
-            st.switch_page("pages/dashboard.py") 
+            if user:  # Check if user data was retrieved successfully
+                st.success(f"Bienvenue {user['first_name']} {user['last_name']} 🎉")
+                st.session_state['logged_in'] = True
+                st.session_state['user'] = user
+                st.session_state['user_email'] = user['email']
+                st.session_state['user_name'] = f"{user['first_name']} {user['last_name']}"
+                st.switch_page("pages/dashboard.py") 
+            else:
+                st.error("❌ Erreur lors de la récupération des données utilisateur.")
         else:
             st.error("❌ Email ou mot de passe incorrect.")
 

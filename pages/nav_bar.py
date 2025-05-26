@@ -1,7 +1,7 @@
 import streamlit as st
 import sqlite3
 import base64
-
+from database.db import get_user,get_users_conn
 DB_PATH = 'database/users.db'
 
 def get_conn():
@@ -22,7 +22,11 @@ def nav_bar():
     """
     Barre de navigation avec gestion des pages et utilisateur dynamique
     """
-    user = st.session_state.get('user_name', 'Utilisateur')
+    email = st.session_state.get("user_email")
+    user = get_user(email)
+    st.session_state['user'] = user
+    st.session_state['user_name'] = f"{user['first_name']} {user['last_name']}"
+    user = st.session_state.get("user_name")
     # Récupération de la page courante
     pages = st.query_params.get_all("page")
     current_page = pages[0] if pages else "home"
