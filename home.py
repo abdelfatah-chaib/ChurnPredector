@@ -369,12 +369,17 @@ elif page == "service":
     </style>
     """, unsafe_allow_html=True)
 
- st.markdown('<h1 style="text-align:center; color:#3EDAD8; margin-bottom:30px;"> Nos Services de Prédiction de Churn</h1>', unsafe_allow_html=True)
-
-    # --------- 1ère rangée : 2 cartes en haut ---------
+ st.markdown(
+        '''
+        <div class="main-title">
+            <span style="color:#3DA6DF;">Nos Solutions Waze</span> <span style="color:#43D9D7;">Churn</span>
+        </div>
+        ''', 
+        unsafe_allow_html=True
+    )
  col1, col2 = st.columns(2)
  with col1:
-     st.markdown("""
+        st.markdown("""
         <div class="service-card">
             <div class="service-icon">🔮</div>
             <div class="service-title">Prédiction du Churn</div>
