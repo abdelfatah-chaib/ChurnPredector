@@ -7,7 +7,6 @@ from pages.nav_bar import nav_bar, render_home_page
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
-
 from pages.nav_bar import nav_bar, render_home_page, render_notification_page, render_profile_page
 
 # Configuration de la page
@@ -40,7 +39,16 @@ current_page = pages[0] if pages else "home"
 if current_page == "home":
     render_home_page()
     st.stop()  # Important: arrêter l'exécution ici
+elif current_page == "notification":
+    render_notification_page()
+    st.stop()
+elif current_page == "profile":
+    render_profile_page()
+    st.stop()
 
+# Si on n'est pas sur dashboard, ne pas afficher le contenu du dashboard
+if current_page != "dashboard":
+    st.stop()
 
 
 # ========== CONTENU DU DASHBOARD SEULEMENT SI current_page == "dashboard" ==========
@@ -59,7 +67,7 @@ def add_bg_from_local(image_path):
                 background-position: center;
             }}
             /* réduction padding top */
-            .block-container {{ margin-top: -45px; }}
+            .block-container {{ margin-top: -40px; }}
             </style>
             """,
             unsafe_allow_html=True
