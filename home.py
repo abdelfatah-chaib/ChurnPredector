@@ -312,15 +312,9 @@ elif page == "service":
 
     st.markdown(
         '''
-        <h1 style="
-            text-align: center; 
-            color: #3EDAD8; 
-            margin-bottom: 30px;
-            font-family: 'Playball', cursive;
-            font-size: 48px;
-        ">
-            Nos Solutions Waze Churn
-        </h1>
+        <div class="main-title">
+            <span style="color:#3DA6DF;">Nos Solutions Waze</span> <span style="color:#43D9D7;">Churn</span>
+        </div>
         ''', 
         unsafe_allow_html=True
     )
