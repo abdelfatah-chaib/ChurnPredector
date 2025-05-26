@@ -232,6 +232,17 @@ def render_notification_page():
         </div>
         ''', unsafe_allow_html=True)
 
+def handle_logout():
+    """
+    Gère la déconnexion de l'utilisateur
+    """
+    # Nettoyer toutes les données de session
+    for key in list(st.session_state.keys()):
+        del st.session_state[key]
+    
+    # Rediriger vers home.py
+    st.switch_page("home.py")
+
 def render_profile_page():
     """
     Affiche la page de profil utilisateur avec données de la base
@@ -361,6 +372,41 @@ def render_profile_page():
             </div>
         </div>
         ''', unsafe_allow_html=True)
+    
+    # Bouton de déconnexion
+    st.markdown("<br>", unsafe_allow_html=True)
+    
+    col1, col2, col3 = st.columns([1, 1, 1])
+    with col2:
+        if st.button(
+            "🚪 Se déconnecter", 
+            key="logout_button",
+            help="Retourner à la page de connexion",
+            use_container_width=True
+        ):
+            handle_logout()
+    
+    # Style CSS pour le bouton de déconnexion
+    st.markdown('''
+        <style>
+        div[data-testid="stButton"] > button[kind="primary"] {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            border: none;
+            color: white;
+            font-weight: 600;
+            font-size: 16px;
+            padding: 12px 24px;
+            border-radius: 10px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(231, 76, 60, 0.3);
+        }
+        div[data-testid="stButton"] > button[kind="primary"]:hover {
+            background: linear-gradient(135deg, #c0392b, #a93226);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(231, 76, 60, 0.4);
+        }
+        </style>
+    ''', unsafe_allow_html=True)
 
 def render_home_page():
     """
@@ -447,7 +493,7 @@ def render_home_page():
                 " onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
                     <i class="bi bi-shield-check" style="font-size: 36px; color: #2ecc71; margin-bottom: 15px;"></i>
                     <h3 style="color: #2c3e50; margin: 10px 0 8px 0; font-size: 18px; font-weight: 600;">Fiabilité</h3>
-                    <p style="color: #555; font-size: 14px; margin: 0; line-height: 1.4;">Précision de 68% et validation croisée rigoureuse</p>
+                    <p style="color: #555; font-size: 14px; margin: 0; line-height: 1.4;">Précision de 75% et validation croisée rigoureuse</p>
                 </div>
             </div>
             <div style="margin-top: 50px;">

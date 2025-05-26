@@ -137,17 +137,17 @@ with col1:
 with col2:
     if total_pred > 0:
         churn_rate = (user_stats['churned_count'] / total_pred) * 100
-        st.metric("Mon Taux de Churn", f"{churn_rate:.1f}%", f"📊 {user_stats['churned_count']} churned")
+        st.metric("Mon Taux de Churn", f"{churn_rate:.1f}%", f"{user_stats['churned_count']} churned")
     else:
         st.metric("Mon Taux de Churn", "0%", "Aucune prédiction")
 
 with col3:
     confidence = user_stats['avg_confidence'] or 0
-    st.metric("Précision Moyenne", f"{confidence*100:.1f}%", f"📈 {user_stats['unique_datasets']} datasets")
+    st.metric("Précision Moyenne", f"{confidence*100:.1f}%", f"{user_stats['unique_datasets']} datasets")
 
 with col4:
     retained_count = user_stats['retained_count']
-    st.metric("Clients Retenus", f"{retained_count:,}", f"✅ {retained_count}/{total_pred}")
+    st.metric("Clients Retenus", f"{retained_count:,}", f"{retained_count}/{total_pred}")
 
 # Row 1: Analyse des tendances + Historique récent
 col1, col2 = st.columns(2)
@@ -229,7 +229,7 @@ else:
 
 # Section de simulation d'une nouvelle prédiction
 st.markdown("---")
-st.subheader("🚀 Simuler une nouvelle prédiction")
+st.subheader("🎯 Simuler une nouvelle prédiction")
 
 col_sim1, col_sim2, col_sim3 = st.columns(3)
 
@@ -242,7 +242,7 @@ with col_sim2:
                             ["RandomForest", "XGBoost", "LogisticRegression"])
 
 with col_sim3:
-    if st.button("🎯 Lancer la prédiction", use_container_width=True):
+    if st.button(" Lancer la prédiction", use_container_width=True):
         # Simulation d'une prédiction
         import random
         
