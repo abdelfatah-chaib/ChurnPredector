@@ -225,9 +225,9 @@ st.markdown("""
 st.markdown("""
 <div class="navbar">
     <div class="nav-left">
-        <form method="get"><button name="page" value="home"    class="nav-button">Accueil</button></form>
-        <form method="get"><button name="page" value="service" class="nav-button">Services</button></form>
-        <form method="get"><button name="page" value="contact" class="nav-button">Contact</button></form>
+        <form method="get"><button name="page" value="home"    class="nav-button">ACCUEIL</button></form>
+        <form method="get"><button name="page" value="service" class="nav-button">SERVICES</button></form>
+        <form method="get"><button name="page" value="contact" class="nav-button">CONTACT</button></form>
     </div>
     <div class="nav-right">
         <form method="get"><button name="page" value="login"  class="nav-button">S'IDENTIFIER</button></form>
