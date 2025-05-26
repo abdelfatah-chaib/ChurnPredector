@@ -1,6 +1,7 @@
 import streamlit as st
 import sqlite3
-
+import base64
+from database.db import get_user,get_users_conn
 DB_PATH = 'database/users.db'
 
 def get_conn():
@@ -21,7 +22,11 @@ def nav_bar():
     """
     Barre de navigation avec gestion des pages et utilisateur dynamique
     """
-    user = st.session_state.get('user_name', 'Utilisateur')
+    email = st.session_state.get("user_email")
+    user = get_user(email)
+    st.session_state['user'] = user
+    st.session_state['user_name'] = f"{user['first_name']} {user['last_name']}"
+    user = st.session_state.get("user_name")
     # Récupération de la page courante
     pages = st.query_params.get_all("page")
     current_page = pages[0] if pages else "home"
@@ -281,7 +286,6 @@ def render_profile_page():
                 </h1>
                 <p style="color: #666; font-size: 18px; margin: 0;">Profil Utilisateur</p>
             </div>
-            
             <div style="
                 display: grid;
                 grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -363,6 +367,7 @@ def render_home_page():
     Affiche le contenu de la page d'accueil avec message de bienvenue
     """
     user_name = st.session_state.get("user_name", "cher utilisateur")
+    add_bg_from_local("images/background_img.jpg")
         
     st.markdown(f'''
         <div style="
@@ -457,3 +462,21 @@ def render_home_page():
             </div>
         </div>
         ''', unsafe_allow_html=True)
+    
+def add_bg_from_local(image_path):
+    with open(image_path, "rb") as image_file:
+        encoded_string = base64.b64encode(image_file.read()).decode()
+    st.markdown(
+        f"""
+        <style>
+        .stApp {{
+            background-image: url("data:image/png;base64,{encoded_string}");
+            background-size: cover;
+            background-position: center;
+        }}
+        /* réduction padding top */
+        .block-container {{ margin-top: -40px; }}
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
