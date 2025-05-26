@@ -3,44 +3,70 @@ import sys
 import os
 import base64
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from nav_bar import nav_bar
+from pages.nav_bar import nav_bar, render_home_page
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
 
+from pages.nav_bar import nav_bar, render_home_page, render_notification_page, render_profile_page
+
 # Configuration de la page
 st.set_page_config(
-    page_title="Dashboard - Churn Predictor",
-    page_icon="wazeLogo.png",
+    page_title="Churn Predictor - Accueil",
+    page_icon="images/wazeLogo.png",
     layout="wide"
 )
+
+# Initialiser la session si nécessaire
+if 'logged_in' not in st.session_state:
+    st.session_state.logged_in = True  # ou False selon votre logique de connexion
+if 'user_name' not in st.session_state:
+    st.session_state.user_name = "Utilisateur"
+if 'user_email' not in st.session_state:
+    st.session_state.user_email = "demo@example.com"
 
 # Vérifier si l'utilisateur est connecté
 if not st.session_state.get('logged_in', False):
     st.error("Vous devez être connecté pour accéder à cette page.")
-    st.switch_page("home.py")
+    # Ici vous pourriez rediriger vers une page de login
+    st.stop()
 
-# Afficher la barre de navigation
 nav_bar()
+# Vérifier quelle page afficher
+pages = st.query_params.get_all("page")
+current_page = pages[0] if pages else "home"
+
+# Si on est sur la page home, afficher le contenu home et arrêter
+if current_page == "home":
+    render_home_page()
+    st.stop()  # Important: arrêter l'exécution ici
+
+
+
+# ========== CONTENU DU DASHBOARD SEULEMENT SI current_page == "dashboard" ==========
 
 # ========== BACKGROUND FUNCTION ==========
 def add_bg_from_local(image_path):
-    with open(image_path, "rb") as image_file:
-        encoded_string = base64.b64encode(image_file.read()).decode()
-    st.markdown(
-        f"""
-        <style>
-        .stApp {{
-            background-image: url("data:image/png;base64,{encoded_string}");
-            background-size: cover;
-            background-position: center;
-        }}
-        /* réduction padding top */
-        .block-container {{ margin-top: -45px; }}
-        </style>
-        """,
-        unsafe_allow_html=True
-    )
+    try:
+        with open(image_path, "rb") as image_file:
+            encoded_string = base64.b64encode(image_file.read()).decode()
+        st.markdown(
+            f"""
+            <style>
+            .stApp {{
+                background-image: url("data:image/png;base64,{encoded_string}");
+                background-size: cover;
+                background-position: center;
+            }}
+            /* réduction padding top */
+            .block-container {{ margin-top: -45px; }}
+            </style>
+            """,
+            unsafe_allow_html=True
+        )
+    except FileNotFoundError:
+        # Si l'image n'existe pas, continuer sans background
+        pass
 
 # apply background
 add_bg_from_local("images/background_img.jpg")
@@ -155,6 +181,7 @@ risk_users = pd.DataFrame({
 
 risk_users['Score de Risque'] = risk_users['Score de Risque'].round(3)
 st.dataframe(risk_users, use_container_width=True)
+
 # Boutons d'action
 st.markdown("---")
 col_action1, col_action2, col_action3 = st.columns(3)
