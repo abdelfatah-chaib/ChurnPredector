@@ -502,7 +502,7 @@ if page == "contact":
        
     }
     .panel h1 {
-        font-size: 32px;
+        font-size: 48px;
         margin-bottom: 30px;
         font-weight: 700;
         color: #3DA6DF;
