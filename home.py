@@ -569,15 +569,7 @@ elif page == "login":
         align-items: center;
         min-height: 70vh;
     }
-    .login-form {
-        width: 350px;
-        background: rgba(62,218,216,0.3);
-        backdrop-filter: blur(5px);
-        border-radius: 20px;
-        margin-left: 110px;
-        padding-left: 20px;
-        box-shadow: 0 8px 24px rgba(0,0,0,0.2);
-    }
+   
     .login-title {
         font-family: 'Playball', cursive;
         font-size: 48px;
@@ -669,14 +661,7 @@ elif page == "signup":
         align-items: center;
         min-height: 70vh;
     }
-    .signup-form {
-        width: 450px;
-        background: rgba(62,218,216,0.3);
-        backdrop-filter: blur(5px);
-        border-radius: 20px;
-        padding: 20px;
-        margin-left: 30px;
-        box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+
     }
     .signup-form {
         width: 450px;
