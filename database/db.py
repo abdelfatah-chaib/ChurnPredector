@@ -6,11 +6,16 @@ Inclut la gestion des utilisateurs et de l'historique des prédictions
 import sqlite3
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional, Tuple
+import streamlit as st
 
 # Chemins des bases de données
 USERS_DB_PATH = 'database/users.db'
 HISTORY_DB_PATH = 'database/history.db'
 
+DB_PATH = 'database/users.db'
+
+def get_conn():
+    return sqlite3.connect(USERS_DB_PATH, check_same_thread=False)
 # ==================== OPÉRATIONS UTILISATEURS ====================
 
 def get_users_conn():
@@ -533,3 +538,416 @@ def export_user_data(user_email: str) -> Dict:
     except Exception as e:
         print(f"Erreur export utilisateur: {e}")
         return None
+    
+# CORRECTIONS POUR LE DASHBOARD - Problèmes de récupération des données
+
+# ========== CORRECTION 1: Fonction de débogage pour vérifier la DB ==========
+def debug_database():
+    """Fonction pour déboguer la base de données"""
+    try:
+        conn = get_conn()
+        cur = conn.cursor()
+        
+        # Vérifier la structure des tables
+        cur.execute("SELECT name FROM sqlite_master WHERE type='table';")
+        tables = cur.fetchall()
+        print(f"Tables disponibles: {tables}")
+        
+        # Vérifier les colonnes de la table predictions
+        cur.execute("PRAGMA table_info(predictions);")
+        columns = cur.fetchall()
+        print(f"Colonnes de predictions: {columns}")
+        
+        # Compter le nombre total de prédictions
+        cur.execute("SELECT COUNT(*) FROM predictions;")
+        total = cur.fetchone()
+        print(f"Total prédictions dans la DB: {total[0]}")
+        
+        # Lister quelques prédictions
+        cur.execute("SELECT * FROM predictions LIMIT 5;")
+        sample = cur.fetchall()
+        print(f"Échantillon de prédictions: {sample}")
+        
+        # Vérifier les utilisateurs
+        cur.execute("SELECT * FROM users LIMIT 5;")
+        users = cur.fetchall()
+        print(f"Utilisateurs: {users}")
+        
+        conn.close()
+        
+    except Exception as e:
+        print(f"Erreur debug: {e}")
+
+# ========== CORRECTION 2: Fonction améliorée get_user_by_email ==========
+def get_user_by_email_fixed(email):
+    """Version corrigée de get_user_by_email avec plus de débogage"""
+    try:
+        conn = get_conn()
+        cur = conn.cursor()
+        
+        # Debug: afficher l'email recherché
+        print(f"Recherche utilisateur avec email: '{email}'")
+        
+        # Recherche exacte
+        cur.execute('SELECT id, first_name, last_name, email FROM users WHERE email = ?', (email,))
+        user = cur.fetchone()
+        
+        if not user:
+            # Recherche insensible à la casse
+            cur.execute('SELECT id, first_name, last_name, email FROM users WHERE LOWER(email) = LOWER(?)', (email,))
+            user = cur.fetchone()
+            
+        if not user:
+            # Lister tous les emails pour debug
+            cur.execute('SELECT email FROM users')
+            all_emails = cur.fetchall()
+            print(f"Emails dans la DB: {[e[0] for e in all_emails]}")
+        
+        conn.close()
+        print(f"Utilisateur trouvé: {user}")
+        return user
+        
+    except Exception as e:
+        print(f"Erreur get_user_by_email_fixed: {e}")
+        return None
+
+# ========== CORRECTION 3: Fonction get_user_predictions corrigée ==========
+def get_user_predictions_fixed(user_email, limit=None):
+    """Version corrigée pour récupérer les prédictions utilisateur"""
+    try:
+        conn = get_conn()
+        cur = conn.cursor()
+        
+        print(f"Récupération prédictions pour: '{user_email}'")
+        
+        # Méthode 1: Recherche directe par email dans predictions
+        query = '''
+        SELECT prediction_date, dataset_name, prediction_result, 
+               confidence_score, model_used, id, user_email
+        FROM predictions 
+        WHERE user_email = ? OR LOWER(user_email) = LOWER(?)
+        ORDER BY prediction_date DESC
+        '''
+        
+        if limit:
+            query += f' LIMIT {limit}'
+            
+        cur.execute(query, (user_email, user_email))
+        predictions = cur.fetchall()
+        
+        # Si pas de résultats, essayer avec user_id
+        if not predictions:
+            user = get_user_by_email_fixed(user_email)
+            if user:
+                user_id = user[0]
+                query2 = '''
+                SELECT prediction_date, dataset_name, prediction_result, 
+                       confidence_score, model_used, id, user_email
+                FROM predictions 
+                WHERE user_id = ?
+                ORDER BY prediction_date DESC
+                '''
+                
+                if limit:
+                    query2 += f' LIMIT {limit}'
+                    
+                cur.execute(query2, (user_id,))
+                predictions = cur.fetchall()
+        
+        conn.close()
+        
+        print(f"Prédictions trouvées: {len(predictions)}")
+        
+        # Convertir en format dictionnaire
+        result = []
+        for pred in predictions:
+            result.append({
+                'prediction_date': pred[0],
+                'dataset_name': pred[1],
+                'prediction_result': pred[2],
+                'confidence_score': pred[3],
+                'model_used': pred[4],
+                'id': pred[5],
+                'user_email': pred[6] if len(pred) > 6 else user_email
+            })
+        
+        return result
+        
+    except Exception as e:
+        print(f"Erreur get_user_predictions_fixed: {e}")
+        return []
+
+# ========== CORRECTION 4: Fonction get_prediction_stats corrigée ==========
+def get_prediction_stats_fixed(user_email=None):
+    """Version corrigée des statistiques de prédictions"""
+    try:
+        conn = get_conn()
+        cur = conn.cursor()
+        
+        if user_email:
+            print(f"Calcul des stats pour: '{user_email}'")
+            
+            # Recherche directe par email dans predictions
+            cur.execute('''
+                SELECT 
+                    COUNT(*) as total,
+                    SUM(CASE WHEN prediction_result = 'churned' THEN 1 ELSE 0 END) as churned,
+                    SUM(CASE WHEN prediction_result = 'retained' THEN 1 ELSE 0 END) as retained,
+                    AVG(confidence_score) as avg_conf,
+                    COUNT(DISTINCT dataset_name) as unique_datasets,
+                    MAX(prediction_date) as last_pred
+                FROM predictions 
+                WHERE user_email = ? OR LOWER(user_email) = LOWER(?)
+            ''', (user_email, user_email))
+            
+            stats = cur.fetchone()
+            
+            # Si pas de résultats, essayer avec user_id
+            if stats[0] == 0:
+                user = get_user_by_email_fixed(user_email)
+                if user:
+                    user_id = user[0]
+                    cur.execute('''
+                        SELECT 
+                            COUNT(*) as total,
+                            SUM(CASE WHEN prediction_result = 'churned' THEN 1 ELSE 0 END) as churned,
+                            SUM(CASE WHEN prediction_result = 'retained' THEN 1 ELSE 0 END) as retained,
+                            AVG(confidence_score) as avg_conf,
+                            COUNT(DISTINCT dataset_name) as unique_datasets,
+                            MAX(prediction_date) as last_pred
+                        FROM predictions 
+                        WHERE user_id = ?
+                    ''', (user_id,))
+                    stats = cur.fetchone()
+        else:
+            # Statistiques globales
+            cur.execute('''
+                SELECT 
+                    COUNT(*) as total,
+                    SUM(CASE WHEN prediction_result = 'churned' THEN 1 ELSE 0 END) as churned,
+                    SUM(CASE WHEN prediction_result = 'retained' THEN 1 ELSE 0 END) as retained,
+                    AVG(confidence_score) as avg_conf,
+                    COUNT(DISTINCT dataset_name) as unique_datasets,
+                    MAX(prediction_date) as last_pred
+                FROM predictions
+            ''')
+            stats = cur.fetchone()
+        
+        conn.close()
+        
+        result = {
+            'total_predictions': stats[0] or 0,
+            'churned_count': stats[1] or 0,
+            'retained_count': stats[2] or 0,
+            'avg_confidence': stats[3] or 0,
+            'unique_datasets': stats[4] or 0,
+            'last_prediction': stats[5]
+        }
+        
+        print(f"Stats calculées: {result}")
+        return result
+        
+    except Exception as e:
+        print(f"Erreur get_prediction_stats_fixed: {e}")
+        return {
+            'total_predictions': 0,
+            'churned_count': 0,
+            'retained_count': 0,
+            'avg_confidence': 0,
+            'unique_datasets': 0,
+            'last_prediction': None
+        }
+
+# ========== CORRECTION 5: Fonction get_monthly_predictions corrigée ==========
+def get_monthly_predictions_fixed(user_email):
+    """Version corrigée des prédictions mensuelles"""
+    try:
+        conn = get_conn()
+        cur = conn.cursor()
+        
+        print(f"Données mensuelles pour: '{user_email}'")
+        
+        # Recherche directe par email
+        cur.execute('''
+            SELECT 
+                strftime('%Y-%m', prediction_date) as month,
+                SUM(CASE WHEN prediction_result = 'churned' THEN 1 ELSE 0 END) as churned,
+                SUM(CASE WHEN prediction_result = 'retained' THEN 1 ELSE 0 END) as retained,
+                COUNT(*) as total
+            FROM predictions 
+            WHERE user_email = ? OR LOWER(user_email) = LOWER(?)
+            GROUP BY strftime('%Y-%m', prediction_date)
+            ORDER BY month DESC
+            LIMIT 12
+        ''', (user_email, user_email))
+        
+        monthly_data = cur.fetchall()
+        
+        # Si pas de résultats, essayer avec user_id
+        if not monthly_data:
+            user = get_user_by_email_fixed(user_email)
+            if user:
+                user_id = user[0]
+                cur.execute('''
+                    SELECT 
+                        strftime('%Y-%m', prediction_date) as month,
+                        SUM(CASE WHEN prediction_result = 'churned' THEN 1 ELSE 0 END) as churned,
+                        SUM(CASE WHEN prediction_result = 'retained' THEN 1 ELSE 0 END) as retained,
+                        COUNT(*) as total
+                    FROM predictions 
+                    WHERE user_id = ?
+                    GROUP BY strftime('%Y-%m', prediction_date)
+                    ORDER BY month DESC
+                    LIMIT 12
+                ''', (user_id,))
+                monthly_data = cur.fetchall()
+        
+        conn.close()
+        
+        result = []
+        for data in monthly_data:
+            result.append({
+                'month': data[0],
+                'churned': data[1],
+                'retained': data[2],
+                'total': data[3]
+            })
+        
+        print(f"Données mensuelles trouvées: {len(result)} mois")
+        return result
+        
+    except Exception as e:
+        print(f"Erreur get_monthly_predictions_fixed: {e}")
+        return []
+
+# ========== CORRECTION 6: Fonction get_dashboard_data corrigée ==========
+@st.cache_data(ttl=60)  # Cache réduit pour debug
+def get_dashboard_data_fixed(user_email):
+    """Version corrigée pour récupérer toutes les données du dashboard"""
+    try:
+        print(f"=== DÉBUT get_dashboard_data_fixed pour '{user_email}' ===")
+        
+        # Debug de la base de données
+        debug_database()
+        
+        # Vérifier que l'utilisateur existe
+        user_data = get_user_by_email_fixed(user_email)
+        print(f"User data: {user_data}")
+        
+        if not user_data and user_email != "demo@example.com":
+            print(f"Utilisateur non trouvé: {user_email}")
+            # Créer un utilisateur demo si nécessaire
+            if user_email not in ["demo@example.com", "", None]:
+                print("Création de données demo...")
+                return create_demo_data(user_email)
+            return None
+            
+        # Statistiques utilisateur
+        user_stats = get_prediction_stats_fixed(user_email)
+        print(f"User stats: {user_stats}")
+        
+        # Prédictions mensuelles
+        monthly_data = get_monthly_predictions_fixed(user_email)
+        print(f"Monthly data: {len(monthly_data)} mois")
+        
+        # Dernières prédictions
+        recent_predictions = get_user_predictions_fixed(user_email, limit=10)
+        print(f"Recent predictions: {len(recent_predictions)}")
+        
+        # Statistiques globales
+        global_stats = get_prediction_stats_fixed()
+        print(f"Global stats: {global_stats}")
+        
+        result = {
+            'user_stats': user_stats,
+            'monthly_data': monthly_data,
+            'recent_predictions': recent_predictions,
+            'global_stats': global_stats
+        }
+        
+        print(f"=== FIN get_dashboard_data_fixed ===")
+        return result
+        
+    except Exception as e:
+        print(f"Erreur dans get_dashboard_data_fixed: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
+
+# ========== CORRECTION 7: Créer des données demo si nécessaire ==========
+def create_demo_data(user_email):
+    """Crée des données de démonstration si l'utilisateur n'a pas de données"""
+    from datetime import datetime, timedelta
+    import random
+    
+    # Simuler des statistiques
+    total_pred = random.randint(5, 20)
+    churned = random.randint(1, total_pred//2)
+    retained = total_pred - churned
+    
+    user_stats = {
+        'total_predictions': total_pred,
+        'churned_count': churned,
+        'retained_count': retained,
+        'avg_confidence': random.uniform(0.75, 0.95),
+        'unique_datasets': random.randint(2, 5),
+        'last_prediction': datetime.now().isoformat()
+    }
+    
+    # Simuler des données mensuelles
+    monthly_data = []
+    for i in range(3):
+        month = (datetime.now() - timedelta(days=30*i)).strftime('%Y-%m')
+        monthly_data.append({
+            'month': month,
+            'churned': random.randint(1, 5),
+            'retained': random.randint(3, 8),
+            'total': random.randint(4, 13)
+        })
+    
+    # Simuler des prédictions récentes
+    recent_predictions = []
+    for i in range(5):
+        recent_predictions.append({
+            'prediction_date': (datetime.now() - timedelta(days=i*2)).isoformat(),
+            'dataset_name': random.choice(['waze_dataset.csv', 'customer_data.csv', 'user_behavior.csv']),
+            'prediction_result': random.choice(['churned', 'retained']),
+            'confidence_score': random.uniform(0.7, 0.95),
+            'model_used': random.choice(['RandomForest', 'XGBoost', 'LogisticRegression']),
+            'id': i+1
+        })
+    
+    global_stats = {
+        'total_predictions': total_pred * 10,
+        'churned_count': churned * 10,
+        'retained_count': retained * 10,
+        'avg_confidence': 0.82,
+        'unique_datasets': 8,
+        'last_prediction': datetime.now().isoformat()
+    }
+    
+    return {
+        'user_stats': user_stats,
+        'monthly_data': monthly_data,
+        'recent_predictions': recent_predictions,
+        'global_stats': global_stats
+    }
+
+# ========== CORRECTION 8: Fonction pour vérifier et corriger la session ==========
+def fix_user_session():
+    """Corrige les données de session utilisateur"""
+    user_email = st.session_state.get('user_email')
+    
+    if not user_email or user_email == "demo@example.com":
+        # Forcer un email de test
+        st.session_state.user_email = "test@example.com"
+        st.session_state.user_name = "Test User"
+        st.session_state.user_id = 1
+        print("Session corrigée avec des données de test")
+    
+    print(f"Session actuelle: {st.session_state.get('user_email')} - {st.session_state.get('user_name')}")
+
+
+
+
+

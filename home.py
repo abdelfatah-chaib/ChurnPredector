@@ -502,7 +502,7 @@ if page == "contact":
        
     }
     .panel h1 {
-        font-size: 32px;
+        font-size: 48px;
         margin-bottom: 30px;
         font-weight: 700;
         color: #3DA6DF;
@@ -633,11 +633,12 @@ elif page == "login":
                 if email and password:
                     if authenticate(email, password):
                         user = get_user(email)
+                        st.session_state['user_email'] = email
                         if user:
                             st.success(f"Bienvenue {user['first_name']} {user['last_name']} 🎉")
                             st.session_state['logged_in'] = True
                             st.session_state['user'] = user
-                            st.session_state['user_email'] = user['email']
+                            st.session_state['user_email'] = email
                             st.session_state['user_name'] = f"{user['first_name']} {user['last_name']}"
                             # Forcer le rechargement de la page pour déclencher la redirection
                             st.rerun()

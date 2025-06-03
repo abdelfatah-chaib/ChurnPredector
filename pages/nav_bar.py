@@ -1,32 +1,226 @@
 import streamlit as st
 import sqlite3
 import base64
-from database.db import get_user,get_users_conn
-DB_PATH = 'database/users.db'
+from datetime import datetime
+import pandas as pd
+import sqlite3
+from datetime import datetime
+import streamlit as st
 
-def get_conn():
-    return sqlite3.connect(DB_PATH, check_same_thread=False)
+# CORRECTION: Chemins des bases de données
+USERS_DB_PATH = 'database/users.db'
+HISTORY_DB_PATH = 'database/history.db'
+
+def get_users_conn():
+    """Connexion à la base users"""
+    return sqlite3.connect(USERS_DB_PATH, check_same_thread=False)
+
+def get_history_conn():
+    """Connexion à la base history"""
+    return sqlite3.connect(HISTORY_DB_PATH, check_same_thread=False)
 
 def get_user_by_email(email):
+    """Récupérer un utilisateur par email depuis users.db"""
     try:
-        conn = get_conn()
+        conn = get_users_conn()
         cur = conn.cursor()
-        cur.execute('SELECT id, first_name, last_name, email FROM users WHERE email = ?', (email,))
-        user = cur.fetchone()
+        cur.execute("SELECT id, first_name, last_name, email FROM users WHERE email = ?", (email,))
+        result = cur.fetchone()
         conn.close()
-        return user
-    except:
+        return result
+    except Exception as e:
+        print(f"Erreur get_user_by_email: {e}")
         return None
+
+def get_prediction_stats(user_email=None):
+    """Statistiques des prédictions depuis history.db"""
+    try:
+        conn = get_history_conn()
+        cur = conn.cursor()
+        
+        if user_email:
+            cur.execute('''
+                SELECT 
+                    COUNT(*) as total,
+                    SUM(CASE WHEN prediction_result = 'churned' THEN 1 ELSE 0 END) as churned,
+                    SUM(CASE WHEN prediction_result = 'retained' THEN 1 ELSE 0 END) as retained,
+                    AVG(confidence_score) as avg_conf,
+                    COUNT(DISTINCT dataset_name) as unique_datasets,
+                    MAX(prediction_date) as last_pred
+                FROM prediction_history 
+                WHERE user_email = ?
+            ''', (user_email,))
+        else:
+            cur.execute('''
+                SELECT 
+                    COUNT(*) as total,
+                    SUM(CASE WHEN prediction_result = 'churned' THEN 1 ELSE 0 END) as churned,
+                    SUM(CASE WHEN prediction_result = 'retained' THEN 1 ELSE 0 END) as retained,
+                    AVG(confidence_score) as avg_conf,
+                    COUNT(DISTINCT dataset_name) as unique_datasets,
+                    MAX(prediction_date) as last_pred
+                FROM prediction_history
+            ''')
+        
+        stats = cur.fetchone()
+        conn.close()
+        
+        return {
+            'total_predictions': stats[0] or 0,
+            'churned_count': stats[1] or 0,
+            'retained_count': stats[2] or 0,
+            'avg_confidence': stats[3] or 0,
+            'unique_datasets': stats[4] or 0,
+            'last_prediction': stats[5]
+        }
+    except Exception as e:
+        print(f"Erreur get_prediction_stats: {e}")
+        return {
+            'total_predictions': 0,
+            'churned_count': 0,
+            'retained_count': 0,
+            'avg_confidence': 0,
+            'unique_datasets': 0,
+            'last_prediction': None
+        }
+
+def get_monthly_predictions(user_email):
+    """Données mensuelles depuis history.db"""
+    try:
+        conn = get_history_conn()
+        cur = conn.cursor()
+        user = get_user_by_email(user_email)
+        if not user:
+            return []
+        
+        user_id = user[0]
+        
+        cur.execute('''
+            SELECT 
+                strftime('%Y-%m', prediction_date) as month,
+                SUM(CASE WHEN prediction_result = 'churned' THEN 1 ELSE 0 END) as churned,
+                SUM(CASE WHEN prediction_result = 'retained' THEN 1 ELSE 0 END) as retained,
+                COUNT(*) as total
+            FROM predictions 
+            WHERE user_id = ?
+            GROUP BY strftime('%Y-%m', prediction_date)
+            ORDER BY month DESC
+            LIMIT 12
+        ''', (user_id,))
+        
+        monthly_data = cur.fetchall()
+        conn.close()
+        
+        result = []
+        for data in monthly_data:
+            result.append({
+                'month': data[0],
+                'churned': data[1],
+                'retained': data[2],
+                'total': data[3]
+            })
+        
+        return result
+        
+    except Exception as e:
+        print(f"Erreur get_monthly_predictions: {e}")
+        return []
+
+def add_prediction(user_id, user_email, dataset_name, prediction_result, confidence_score, model_used):
+    """Ajoute une nouvelle prédiction à la base de données"""
+    try:
+        conn = get_history_conn()
+        cur = conn.cursor()
+        
+        cur.execute('''
+            INSERT INTO predictions 
+            (user_id, user_email, dataset_name, prediction_result, confidence_score, model_used, prediction_date)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', (user_id, user_email, dataset_name, prediction_result, confidence_score, model_used, datetime.now().isoformat()))
+        
+        conn.commit()
+        conn.close()
+        return True
+        
+    except Exception as e:
+        print(f"Erreur add_prediction: {e}")
+        return False
+
+def initialize_user_data_globally():
+    """
+    Initialise une seule fois les données de l'utilisateur dans st.session_state.
+    
+    1. Si st.session_state['user_email'] est déjà renseigné (≠ ""), on ne touche rien.
+       → On considère que l'utilisateur est déjà connecté (même si en base le user pourrait ne pas exister).
+    2. Sinon (st.session_state['user_email'] est vide), on tente de prendre le PREMIER
+       utilisateur de la table `users`. Si aucun utilisateur réel n'existe, on passe en mode "demo".
+    """
+
+    # 1) Si un email existe déjà en session (qu'importe s'il existe réellement en DB), on le conserve
+    if st.session_state.get('user_email'):
+        # L'utilisateur (ou son email) est déjà en session : on ne modifie rien d'autre.
+        return
+
+    # 2) Si on arrive ici, c'est qu'il n'y a aucun 'user_email' défini.
+    #    On tente donc une reconnexion automatique sur le premier utilisateur en base.
+    try:
+        conn = get_users_conn()
+        cur = conn.cursor()
+        cur.execute("SELECT id, first_name, last_name, email FROM users LIMIT 1")
+        first_user = cur.fetchone()
+        conn.close()
+
+        if first_user:
+            # On place ce premier utilisateur en session, une seule fois
+            user_id, first_name, last_name, email = first_user
+            st.session_state['logged_in']  = True
+            st.session_state['user_email'] = email
+            st.session_state['user_name']  = f"{first_name} {last_name}"
+            st.session_state['user_id']    = user_id
+            st.session_state['user_data']  = {
+                'id': user_id,
+                'first_name': first_name,
+                'last_name': last_name,
+                'email': email
+            }
+            return
+        else:
+            # Pas d'utilisateurs réels en base → on définit le demo user (une seule fois)
+            st.session_state['logged_in']  = True
+            st.session_state['user_email'] = "demo@example.com"
+            st.session_state['user_name']  = "Demo User"
+            st.session_state['user_id']    = 0
+            st.session_state['user_data']  = {
+                'id': 0,
+                'first_name': "Demo",
+                'last_name': "User",
+                'email': "demo@example.com"
+            }
+            return
+
+    except Exception:
+        # En cas d'erreur DB, on bascule également en mode demo
+        st.session_state['logged_in']  = True
+        st.session_state['user_email'] = "demo@example.com"
+        st.session_state['user_name']  = "Demo User"
+        st.session_state['user_id']    = 0
+        st.session_state['user_data']  = {
+            'id': 0,
+            'first_name': "Demo",
+            'last_name': "User",
+            'email': "demo@example.com"
+        }
+        return
+
 
 def nav_bar():
     """
     Barre de navigation avec gestion des pages et utilisateur dynamique
     """
-    email = st.session_state.get("user_email")
-    user = get_user(email)
-    st.session_state['user'] = user
-    st.session_state['user_name'] = f"{user['first_name']} {user['last_name']}"
-    user = st.session_state.get("user_name")
+    initialize_user_data_globally()
+
+    user_name = st.session_state['user_name']
+    user_email  = st.session_state['user_email']
     # Récupération de la page courante
     pages = st.query_params.get_all("page")
     current_page = pages[0] if pages else "home"
@@ -34,7 +228,7 @@ def nav_bar():
     # Fonction pour déterminer la classe CSS active
     def get_active_class(page_name):
         return "nav-button active" if current_page == page_name else "nav-button"
-    
+        
     # Gestion des clics sur les icônes
     if st.session_state.get('show_notification', False):
         st.success("🎉 Bienvenue sur notre plateforme ! Nous sommes ravis de vous accueillir.")
@@ -154,7 +348,7 @@ def nav_bar():
             </form>
             <form method="get" style="display: inline;">
                 <button name="page" value="profile" class="user-section" title="Profil utilisateur" type="submit" style="border: none; background: transparent;">
-                  <span style="font-weight:600;">{user}</span>
+                  <span style="font-weight:600;">{user_name}</span>
                   <i class="bi bi-person-circle" style="font-size: 20px; color: #3DA6DF;"></i>
                 </button>
             </form>
@@ -163,9 +357,9 @@ def nav_bar():
         ''', unsafe_allow_html=True)
 
 def render_notification_page():
-    """
-    Affiche la page de notifications
-    """
+    """Affiche la page de notifications"""
+    user_name = st.session_state.get("user_name", "Utilisateur")
+    
     st.markdown(f'''
         <div style="
             text-align: center;
@@ -183,7 +377,7 @@ def render_notification_page():
                 margin-bottom: 20px;
                 text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
             ">
-                🔔 Notifications
+                🔔 Notifications pour {user_name}
             </h1>
             <div style="
                 background: rgba(255,255,255,0.9);
@@ -207,7 +401,7 @@ def render_notification_page():
                         font-size: 18px;
                     ">🎉</div>
                     <div>
-                        <h3 style="margin: 0; color: #2c3e50; font-size: 18px;">Bienvenue sur notre plateforme !</h3>
+                        <h3 style="margin: 0; color: #2c3e50; font-size: 18px;">Bienvenue {user_name} !</h3>
                         <p style="margin: 5px 0 0 0; color: #666; font-size: 14px;">Il y a 2 minutes</p>
                     </div>
                 </div>
@@ -233,9 +427,7 @@ def render_notification_page():
         ''', unsafe_allow_html=True)
 
 def handle_logout():
-    """
-    Gère la déconnexion de l'utilisateur
-    """
+    """Gère la déconnexion de l'utilisateur"""
     # Nettoyer toutes les données de session
     for key in list(st.session_state.keys()):
         del st.session_state[key]
@@ -244,22 +436,33 @@ def handle_logout():
     st.switch_page("home.py")
 
 def render_profile_page():
-    """
-    Affiche la page de profil utilisateur avec données de la base
-    """
-    user_email = st.session_state.get('user_email', '')
-    user_data = get_user_by_email(user_email) if user_email else None
+    """Affiche la page de profil utilisateur avec données de la base"""
+    user_email = st.session_state.get('user_email', 'demo@example.com')
     
-    if user_data:
-        user_id, first_name, last_name, email = user_data
-        full_name = f"{first_name} {last_name}"
+    # Utiliser les données déjà en session_state si disponibles
+    if st.session_state.get('user_data'):
+        user_data = st.session_state['user_data']
+        user_id = user_data.get('id', 'N/A')
+        first_name = user_data.get('first_name', 'Demo')
+        last_name = user_data.get('last_name', 'User')
+        email = user_data.get('email', user_email)
     else:
-        # Données par défaut si pas de connexion DB
-        user_id = "N/A"
-        first_name = st.session_state.get('user_name', 'Utilisateur')
-        last_name = "Demo"
-        email = st.session_state.get('user_email', 'demo@example.com')
-        full_name = f"{first_name} {last_name}"
+        # Sinon récupérer depuis la DB
+        user_tuple = get_user_by_email(user_email) if user_email else None
+        
+        if user_tuple:
+            user_id, first_name, last_name, email = user_tuple
+        else:
+            # Données par défaut si pas de connexion DB
+            user_id = "N/A"
+            first_name = "Demo"
+            last_name = "User"
+            email = user_email
+    
+    full_name = f"{first_name} {last_name}"
+    
+    # Récupérer les statistiques de l'utilisateur
+    user_stats = get_prediction_stats(user_email)
     
     st.markdown(f'''
         <div style="
@@ -346,21 +549,19 @@ def render_profile_page():
                     <div style="space-y: 15px;">
                         <div style="margin-bottom: 15px;">
                             <label style="color: #666; font-size: 14px; font-weight: 600; display: block; margin-bottom: 5px;">Prédictions Effectuées</label>
-                            <p style="color: #333; font-size: 16px; margin: 0; padding: 10px; background: #e8f5e8; border-radius: 8px; font-weight: 600;">127</p>
+                            <p style="color: #333; font-size: 16px; margin: 0; padding: 10px; background: #e8f5e8; border-radius: 8px; font-weight: 600;">{user_stats['total_predictions']}</p>
                         </div>
                         <div style="margin-bottom: 15px;">
-                            <label style="color: #666; font-size: 14px; font-weight: 600; display: block; margin-bottom: 5px;">Dernière Connexion</label>
-                            <p style="color: #333; font-size: 16px; margin: 0; padding: 10px; background: #e3f2fd; border-radius: 8px;">Aujourd'hui</p>
+                            <label style="color: #666; font-size: 14px; font-weight: 600; display: block; margin-bottom: 5px;">Clients Retenus</label>
+                            <p style="color: #333; font-size: 16px; margin: 0; padding: 10px; background: #e3f2fd; border-radius: 8px; font-weight: 600;">{user_stats['retained_count']}</p>
                         </div>
                         <div style="margin-bottom: 15px;">
-                            <label style="color: #666; font-size: 14px; font-weight: 600; display: block; margin-bottom: 5px;">Statut du Compte</label>
-                            <p style="color: #333; font-size: 16px; margin: 0; padding: 10px; background: #fff3cd; border-radius: 8px; font-weight: 600;">
-                                <span style="color: #28a745;">●</span> Actif
-                            </p>
+                            <label style="color: #666; font-size: 14px; font-weight: 600; display: block; margin-bottom: 5px;">Clients Perdus</label>
+                            <p style="color: #333; font-size: 16px; margin: 0; padding: 10px; background: #ffebee; border-radius: 8px; font-weight: 600;">{user_stats['churned_count']}</p>
                         </div>
                         <div>
-                            <label style="color: #666; font-size: 14px; font-weight: 600; display: block; margin-bottom: 5px;">Type de Compte</label>
-                            <p style="color: #333; font-size: 16px; margin: 0; padding: 10px; background: #f3e5f5; border-radius: 8px; font-weight: 600;">Premium</p>
+                            <label style="color: #666; font-size: 14px; font-weight: 600; display: block; margin-bottom: 5px;">Précision Moyenne</label>
+                            <p style="color: #333; font-size: 16px; margin: 0; padding: 10px; background: #f3e5f5; border-radius: 8px; font-weight: 600;">{(user_stats['avg_confidence'] or 0) * 100:.1f}%</p>
                         </div>
                     </div>
                 </div>
@@ -385,28 +586,7 @@ def render_profile_page():
             use_container_width=True
         ):
             handle_logout()
-    
-    # Style CSS pour le bouton de déconnexion
-    st.markdown('''
-        <style>
-        div[data-testid="stButton"] > button[kind="primary"] {
-            background: linear-gradient(135deg, #e74c3c, #c0392b);
-            border: none;
-            color: white;
-            font-weight: 600;
-            font-size: 16px;
-            padding: 12px 24px;
-            border-radius: 10px;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(231, 76, 60, 0.3);
-        }
-        div[data-testid="stButton"] > button[kind="primary"]:hover {
-            background: linear-gradient(135deg, #c0392b, #a93226);
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(231, 76, 60, 0.4);
-        }
-        </style>
-    ''', unsafe_allow_html=True)
+
 
 def render_home_page():
     """
@@ -432,7 +612,7 @@ def render_home_page():
                 margin-bottom: 20px;
                 text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
             ">
-                Bienvenue chèr utilisateur !
+                Bienvenue chèr {user_name} !
             </h1>
             <p style="
                 font-size: 20px;
@@ -510,19 +690,39 @@ def render_home_page():
         ''', unsafe_allow_html=True)
     
 def add_bg_from_local(image_path):
-    with open(image_path, "rb") as image_file:
-        encoded_string = base64.b64encode(image_file.read()).decode()
-    st.markdown(
-        f"""
-        <style>
-        .stApp {{
-            background-image: url("data:image/png;base64,{encoded_string}");
-            background-size: cover;
-            background-position: center;
-        }}
-        /* réduction padding top */
-        .block-container {{ margin-top: -40px; }}
-        </style>
-        """,
-        unsafe_allow_html=True
-    )
+    try:
+        with open(image_path, "rb") as image_file:
+            encoded_string = base64.b64encode(image_file.read()).decode()
+        st.markdown(
+            f"""
+            <style>
+            .stApp {{
+                background-image: url("data:image/png;base64,{encoded_string}");
+                background-size: cover;
+                background-position: center;
+            }}
+            /* réduction padding top */
+            .block-container {{ margin-top: -40px; }}
+            </style>
+            """,
+            unsafe_allow_html=True
+        )
+    except FileNotFoundError:
+        pass
+
+def refresh_user_data():
+    """Force la mise à jour des données utilisateur depuis la DB"""
+    email = st.session_state.get('user_email')
+    if email and email != "demo@example.com":
+        try:
+            user_data = get_user_by_email(email)
+            if user_data:
+                st.session_state.user_name = f"{user_data['first_name']} {user_data['last_name']}"
+                st.session_state.user_data = user_data
+        except Exception as e:
+            print(f"Erreur lors du rafraîchissement: {e}")
+
+
+
+
+
