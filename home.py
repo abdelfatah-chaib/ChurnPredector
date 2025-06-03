@@ -1,6 +1,7 @@
 import streamlit as st
 from PIL import Image
 import base64
+import sqlite3
 from database.db import authenticate, create_user, get_user
 import sys
 import os
@@ -21,6 +22,45 @@ if 'logged_in' not in st.session_state:
 # Vérifier si l'utilisateur est déjà connecté et rediriger vers le dashboard
 if st.session_state.get('logged_in', False):
     st.switch_page("pages/dashboard.py")
+
+# ========== DATABASE FUNCTIONS ==========
+def get_users_count():
+    """Récupère le nombre total d'utilisateurs dans la base de données"""
+    try:
+        conn = sqlite3.connect('database/users.db', check_same_thread=False)
+        cursor = conn.cursor()
+        cursor.execute("SELECT COUNT(*) FROM users")
+        count = cursor.fetchone()[0]
+        conn.close()
+        return count
+    except Exception as e:
+        st.error(f"Erreur lors de la récupération du nombre d'utilisateurs: {e}")
+        return 0
+
+def get_predictions_count():
+    """Récupère le nombre total de prédictions dans history.db"""
+    try:
+        conn = sqlite3.connect('database/history.db', check_same_thread=False)
+        cursor = conn.cursor()
+        # Assumant que la table s'appelle 'predictions' ou 'history'
+        # Ajustez le nom de la table selon votre structure
+        cursor.execute("SELECT COUNT(*) FROM prediction_history")  # ou predictions selon votre table
+        count = cursor.fetchone()[0]
+        conn.close()
+        return count
+    except Exception as e:
+        # Si la table n'existe pas encore ou autre erreur
+        try:
+            # Essayer avec un autre nom de table possible
+            conn = sqlite3.connect('database/history.db', check_same_thread=False)
+            cursor = conn.cursor()
+            cursor.execute("SELECT COUNT(*) FROM prediction_history")
+            count = cursor.fetchone()[0]
+            conn.close()
+            return count
+        except:
+            st.error(f"Erreur lors de la récupération du nombre de prédictions: {e}")
+            return 0
 
 # ========== BACKGROUND ==========
 def add_bg_from_local(image_path):
@@ -204,20 +244,39 @@ st.markdown("""
         border-radius: 8px !important;
     }
 
-    </style>
-    <!-- SCRIPT pour toggler le password -->
-    <script>
-    function togglePwd(el){
-      const pwd = el.closest('.password-wrapper').querySelector('input');
-      if(pwd.type==='password'){
-        pwd.type='text';
-        el.src='https://img.icons8.com/ios-filled/50/ffffff/closed-eye.png';
-      } else {
-        pwd.type='password';
-        el.src='https://img.icons8.com/ios-filled/50/ffffff/visible.png';
-      }
+    /* Styles pour les statistiques */
+    .stats-container {
+        display: flex;
+        justify-content: center;
+        gap: 60px;
+        margin: 80px 0;
     }
-    </script>
+    .stat-card {
+        background: rgba(62, 218, 216, 0.3);
+        backdrop-filter: blur(5px);
+        padding: 30px 50px;
+        border-radius: 20px;
+        text-align: center;
+        transition: transform 0.3s ease;
+    }
+    .stat-card:hover {
+        transform: translateY(-5px);
+    }
+    .stat-number {
+        font-size: 48px;
+        color: #3DA6DF;
+        font-weight: 700;
+        font-family: 'Poppins';
+        margin: 0;
+    }
+    .stat-label {
+        color: white;
+        font-size: 18px;
+        margin-top: 10px;
+        font-family: 'Poppins';
+    }
+
+    </style>
 """, unsafe_allow_html=True)
 
 
@@ -253,67 +312,23 @@ if page == "home":
     Cette application permet aux entreprises d'analyser leurs données clients pour prédire les désabonnements grâce à l'intelligence artificielle.
     </div>
     """, unsafe_allow_html=True)
-    st.markdown("""
-    <style>
-    .stats-container {
-        display: flex;
-        justify-content: center;
-        gap: 60px;
-        margin: 80px 0;
-    }
-    .stat-card {
-        background: rgba(62, 218, 216, 0.3);
-        backdrop-filter: blur(5px);
-        padding: 30px 50px;
-        border-radius: 20px;
-        text-align: center;
-    }
-    .stat-number {
-        font-size: 48px;
-        color: #3DA6DF;
-        font-weight: 700;
-        font-family: 'Poppins';
-    }
-    .stat-label {
-        color: white;
-        font-size: 18px;
-        margin-top: 10px;
-    }
-    </style>
     
+    # Récupérer les comptes réels depuis les bases de données
+    users_count = get_users_count()
+    predictions_count = get_predictions_count()
+    
+    # Afficher les statistiques avec les vraies données
+    st.markdown(f"""
     <div class="stats-container">
         <div class="stat-card">
-            <div class="stat-number" id="userCount">0</div>
+            <div class="stat-number">{users_count:,}</div>
             <div class="stat-label">Utilisateurs actifs</div>
         </div>
         <div class="stat-card">
-            <div class="stat-number" id="predictionCount">0</div>
+            <div class="stat-number">{predictions_count:,}</div>
             <div class="stat-label">Prédictions réalisées</div>
         </div>
     </div>
-
-    <script>
-    function animateValue(obj, start, end, duration) {
-        let startTimestamp = null;
-        const step = (timestamp) => {
-            if (!startTimestamp) startTimestamp = timestamp;
-            const progress = Math.min((timestamp - startTimestamp) / duration, 1);
-            obj.textContent = Math.floor(progress * (end - start) + start).toLocaleString();
-            if (progress < 1) window.requestAnimationFrame(step);
-        };
-        window.requestAnimationFrame(step);
-    }
-    
-    // Valeurs réelles à remplacer
-    const userCount = 1542;
-    const predictionCount = 89245;
-    
-    // Démarrage de l'animation après un court délai
-    setTimeout(() => {
-        animateValue(document.getElementById("userCount"), 0, userCount, 2000);
-        animateValue(document.getElementById("predictionCount"), 0, predictionCount, 2500);
-    }, 500);
-    </script>
     """, unsafe_allow_html=True)
 
 
@@ -404,10 +419,10 @@ elif page == "service":
      st.markdown("""
         <div class="service-card">
             <div class="service-icon">📬</div>
-            <div class="service-title">Système d’Alertes et Emails Automatisés</div>
+            <div class="service-title">Système d'Alertes et Emails Automatisés</div>
             <div class="service-desc">
                 Détection automatique des causes de churn (problème technique, inactivité...) 
-                et envoi d’emails personnalisés à l’utilisateur pour l'inciter à revenir.
+                et envoi d'emails personnalisés à l'utilisateur pour l'inciter à revenir.
                 <div style="margin-top:12px;">
                     <span class="tech-badge">Flask API</span>
                     <span class="tech-badge">Gmail / SendGrid</span>
@@ -416,7 +431,7 @@ elif page == "service":
             </div>
             <div class="service-explain">
                 📬 Détecte les signaux de churn et envoie des emails ciblés pour récupérer les clients.  
-                Utilise des APIs comme Flask et des services d’emailing pour alerter rapidement.
+                Utilise des APIs comme Flask et des services d'emailing pour alerter rapidement.
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -427,7 +442,7 @@ elif page == "service":
      st.markdown("""
         <div class="service-card">
             <div class="service-icon">🤖</div>
-            <div class="service-title">Chatbot IA d’Analyse du Churn</div>
+            <div class="service-title">Chatbot IA d'Analyse du Churn</div>
             <div class="service-desc">
                 Un assistant virtuel intelligent qui répond aux questions sur les raisons du churn, 
                 explique les prédictions et propose des recommandations de rétention client.
