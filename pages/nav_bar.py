@@ -212,7 +212,353 @@ def initialize_user_data_globally():
         }
         return
 
+def render_chatbot():
+    """Affiche le chatbot flottant"""
+    # Initialiser l'état du chatbot
+    if 'chatbot_open' not in st.session_state:
+        st.session_state.chatbot_open = False
+    if 'chat_messages' not in st.session_state:
+        st.session_state.chat_messages = [
+            {"role": "assistant", "content": "👋 Bonjour ! Je suis votre assistant virtuel. Comment puis-je vous aider aujourd'hui ?"}
+        ]
 
+    # CSS pour le chatbot flottant
+    st.markdown('''
+        <style>
+        /* Bouton flottant du chatbot */
+        .chatbot-toggle {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 4px 20px rgba(102, 126, 234, 0.4);
+            transition: all 0.3s ease;
+            z-index: 1000;
+            border: none;
+            color: white;
+            font-size: 24px;
+        }
+        
+        .chatbot-toggle:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 25px rgba(102, 126, 234, 0.6);
+        }
+        
+        /* Masquer le bouton Streamlit original */
+        div[data-testid*="chatbot_toggle"] {
+            position: fixed !important;
+            bottom: 20px !important;
+            right: 20px !important;
+            width: 60px !important;
+            height: 60px !important;
+            z-index: 1001 !important;
+            background: transparent !important;
+            border: none !important;
+            padding: 0 !important;
+        }
+        
+        div[data-testid*="chatbot_toggle"] button {
+            width: 60px !important;
+            height: 60px !important;
+            border-radius: 50% !important;
+            background: transparent !important;
+            border: none !important;
+            padding: 0 !important;
+            opacity: 0 !important;
+            cursor: pointer !important;
+        }
+        
+        /* Fenêtre du chatbot */
+        .chatbot-window {
+            position: fixed;
+            bottom: 90px;
+            right: 20px;
+            width: 350px;
+            height: 450px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            z-index: 999;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            animation: slideUp 0.3s ease;
+        }
+        
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        /* En-tête du chatbot */
+        .chatbot-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .chatbot-header h3 {
+            margin: 0;
+            font-size: 16px;
+            font-weight: 600;
+        }
+        
+        .close-btn {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            padding: 0;
+            width: 25px;
+            height: 25px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: background 0.3s;
+        }
+        
+        .close-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        /* Masquer le bouton de fermeture Streamlit */
+        div[data-testid*="close_chatbot"] {
+            display: none !important;
+        }
+        
+        /* Zone de messages */
+        .chat-messages {
+            flex: 1;
+            padding: 15px;
+            overflow-y: auto;
+            background: #f8f9fa;
+        }
+        
+        .message {
+            margin-bottom: 15px;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+        }
+        
+        .message.user {
+            flex-direction: row-reverse;
+        }
+        
+        .message-content {
+            max-width: 70%;
+            padding: 10px 15px;
+            border-radius: 15px;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+        
+        .message.assistant .message-content {
+            background: white;
+            color: #333;
+            border: 1px solid #e9ecef;
+        }
+        
+        .message.user .message-content {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .message-avatar {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+        
+        .message.assistant .message-avatar {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .message.user .message-avatar {
+            background: #e9ecef;
+            color: #666;
+        }
+        
+        /* Zone de saisie */
+        .chat-input-area {
+            padding: 15px;
+            background: white;
+            border-top: 1px solid #e9ecef;
+        }
+        
+        .chat-input-container {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .chat-input {
+            flex: 1;
+            padding: 10px 15px;
+            border: 1px solid #e9ecef;
+            border-radius: 20px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+        
+        .chat-input:focus {
+            border-color: #667eea;
+        }
+        
+        .send-btn {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 50%;
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.3s;
+        }
+        
+        .send-btn:hover {
+            transform: scale(1.05);
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .chatbot-window {
+                width: calc(100vw - 40px);
+                right: 20px;
+                left: 20px;
+                height: 400px;
+            }
+        }
+        </style>
+    ''', unsafe_allow_html=True)
+
+    # Bouton Streamlit invisible mais bien positionné
+    #if st.button("", key="chatbot_toggle", help="Ouvrir l'assistant virtuel"):
+        #st.session_state.chatbot_open = not st.session_state.chatbot_open
+        #st.rerun()
+
+    # Affichage de l'icône flottante avec HTML/CSS
+    st.markdown(f'''
+        <div class="chatbot-toggle">
+            💬
+        </div>
+    ''', unsafe_allow_html=True)
+
+    # Fenêtre du chatbot
+    if st.session_state.chatbot_open:
+        # Bouton de fermeture invisible pour Streamlit
+        if st.button("", key="close_chatbot", help="Fermer le chatbot"):
+            st.session_state.chatbot_open = False
+            st.rerun()
+        
+        # Conteneur de la fenêtre du chatbot
+        st.markdown(f'''
+            <div class="chatbot-window">
+                <div class="chatbot-header">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span style="font-size: 20px;">🤖</span>
+                        <h3>Assistant IA</h3>
+                    </div>
+                    <button class="close-btn" onclick="document.querySelector('[data-testid*=\\"close_chatbot\\"] button').click()">
+                        ✕
+                    </button>
+                </div>
+                <div class="chat-messages">
+        ''', unsafe_allow_html=True)
+        
+        # Affichage des messages
+        for message in st.session_state.chat_messages:
+            if message["role"] == "assistant":
+                st.markdown(f'''
+                    <div class="message assistant">
+                        <div class="message-avatar">🤖</div>
+                        <div class="message-content">{message["content"]}</div>
+                    </div>
+                ''', unsafe_allow_html=True)
+            else:
+                st.markdown(f'''
+                    <div class="message user">
+                        <div class="message-avatar">👤</div>
+                        <div class="message-content">{message["content"]}</div>
+                    </div>
+                ''', unsafe_allow_html=True)
+        
+        st.markdown('</div></div>', unsafe_allow_html=True)
+        
+        # Zone de saisie
+        with st.form(key="chat_form", clear_on_submit=True):
+            col1, col2 = st.columns([4, 1])
+            with col1:
+                user_input = st.text_input("", placeholder="Tapez votre message...", label_visibility="collapsed")
+            with col2:
+                send_button = st.form_submit_button("📤")
+            
+            if send_button and user_input.strip():
+                # Ajouter le message de l'utilisateur
+                st.session_state.chat_messages.append({"role": "user", "content": user_input})
+                
+                # Générer une réponse simple
+                response = generate_chatbot_response(user_input)
+                st.session_state.chat_messages.append({"role": "assistant", "content": response})
+                
+                st.rerun()
+
+def generate_chatbot_response(user_input):
+    """Génère une réponse simple du chatbot (à personnaliser selon vos besoins)"""
+    user_input_lower = user_input.lower()
+    
+    # Réponses prédéfinies basiques
+    if any(word in user_input_lower for word in ['bonjour', 'salut', 'hello', 'bonsoir']):
+        return "👋 Bonjour ! Comment puis-je vous aider avec votre analyse prédictive aujourd'hui ?"
+    
+    elif any(word in user_input_lower for word in ['aide', 'help', 'assistance']):
+        return "🤝 Je peux vous aider avec :\n• Navigation dans l'application\n• Explication des prédictions\n• Interprétation des résultats\n• Conseils d'utilisation"
+    
+    elif any(word in user_input_lower for word in ['prédiction', 'prediction', 'churn']):
+        return "📊 Notre système de prédiction utilise des algorithmes de machine learning pour identifier les clients à risque de désabonnement. Vous pouvez tester les prédictions dans la section dédiée !"
+    
+    elif any(word in user_input_lower for word in ['tableau', 'dashboard', 'statistiques']):
+        return "📈 Le tableau de bord vous permet de visualiser vos métriques clés : taux de rétention, prédictions récentes, et tendances temporelles. Très utile pour le suivi !"
+    
+    elif any(word in user_input_lower for word in ['comment', 'utiliser', 'fonctionner']):
+        return "🔧 Pour bien utiliser la plateforme :\n1. Consultez le tableau de bord\n2. Uploadez vos données\n3. Lancez une prédiction\n4. Analysez les résultats"
+    
+    elif any(word in user_input_lower for word in ['merci', 'thanks', 'remercie']):
+        return "😊 De rien ! N'hésitez pas si vous avez d'autres questions. Je suis là pour vous aider !"
+    
+    elif any(word in user_input_lower for word in ['au revoir', 'bye', 'adieu']):
+        return "👋 Au revoir ! Bonne continuation avec vos analyses prédictives !"
+    
+    else:
+        return "🤔 Je comprends votre question. Pour des informations détaillées, n'hésitez pas à consulter notre documentation ou à reformuler votre demande. Je suis là pour vous accompagner !"
 def nav_bar():
     """
     Barre de navigation avec gestion des pages et utilisateur dynamique
@@ -355,6 +701,9 @@ def nav_bar():
           </div>
         </div>
         ''', unsafe_allow_html=True)
+    
+    # Ajouter le chatbot flottant à chaque page
+    render_chatbot()
 
 def render_notification_page():
     """Affiche la page de notifications"""
